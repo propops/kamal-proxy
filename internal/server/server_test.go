@@ -176,7 +176,8 @@ func TestServer_TLSCipherSuites(t *testing.T) {
 		}
 		router := NewRouter(t.TempDir() + "/state")
 		server := NewServer(config, router)
-		server.Start()
+		err := server.Start()
+		require.NoError(t, err)
 		t.Cleanup(func() { server.Stop() })
 
 		certPath, keyPath := prepareTestCertificateFiles(t)
