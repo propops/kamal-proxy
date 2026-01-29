@@ -143,6 +143,19 @@ your certificate file and the corresponding private key:
     kamal-proxy deploy service1 --target web-1:3000 --host app1.example.com --tls --tls-certificate-path cert.pem --tls-private-key-path key.pem
 
 
+### Limiting TLS cipher suites
+
+By default, Kamal Proxy uses Go's default TLS cipher suite selection, which includes some CBC-based ciphers that may be flagged as obsolete by security scanners. You can limit which cipher suites are enabled by specifying the `--tls-cipher-suites` flag when running the proxy:
+
+    kamal-proxy run --tls-cipher-suites "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+
+Or using an environment variable:
+
+    TLS_CIPHER_SUITES="TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384" kamal-proxy run
+
+**Note:** When specifying cipher suites, make sure to use cipher suites that match your certificate type (RSA or ECDSA). TLS 1.3 cipher suites are always enabled and cannot be disabled.
+
+
 ## Specifying `run` options with environment variables
 
 In some environments, like when running a Docker container, it can be convenient

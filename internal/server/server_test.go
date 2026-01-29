@@ -162,3 +162,61 @@ func testRequestUsingTransport(server *Server, transport http.RoundTripper) (*ht
 	uri := fmt.Sprintf("https://localhost:%d/", server.HttpsPort())
 	return client.Get(uri)
 }
+
+func TestServer_TLSCipherSuites(t *testing.T) {
+	t.Run("with custom cipher suites", func(t *testing.T) {
+		target := testTarget(t, func(w http.ResponseWriter, r *http.Request) {})
+		
+		// Create server with custom cipher suites (only non-CBC suites)
+		// Note: Using ECDSA cipher suites since the test certificate is ECDSA-based
+		config := &Config{
+			HttpPort:  0,
+			HttpsPort: 0,
+			TLSCipherSuites: "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+		}
+		router := NewRouter(t.TempDir() + "/state")
+		server := NewServer(config, router)
+		err := server.Start()
+		require.NoError(t, err)
+		t.Cleanup(func() { server.Stop() })
+
+		certPath, keyPath := prepareTestCertificateFiles(t)
+		serviceOptions := defaultServiceOptions
+		serviceOptions.TLSEnabled = true
+		serviceOptions.TLSCertificatePath = certPath
+		serviceOptions.TLSPrivateKeyPath = keyPath
+
+		testDeployTarget(t, target, server, serviceOptions)
+
+		// Test that HTTPS works with the configured cipher suites
+		// Force TLS 1.2 to test cipher suite configuration (TLS 1.3 ciphers are not configurable)
+		transport := &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+				MaxVersion: tls.VersionTLS12,
+				CipherSuites: []uint16{
+					tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				},
+			},
+		}
+
+		resp, err := testRequestUsingTransport(server, transport)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, uint16(tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256), resp.TLS.CipherSuite)
+	})
+
+	t.Run("with invalid cipher suite configuration", func(t *testing.T) {
+		config := &Config{
+			HttpPort:        0,
+			HttpsPort:       0,
+			TLSCipherSuites: "TLS_INVALID_CIPHER_SUITE",
+		}
+		router := NewRouter(t.TempDir() + "/state")
+		server := NewServer(config, router)
+		
+		err := server.Start()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown cipher suite")
+	})
+}

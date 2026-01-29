@@ -150,6 +150,16 @@ func (s *Server) startHTTPServers() error {
 		return err
 	}
 	s.httpsListener = httpsListener
+	
+	// Parse cipher suites if configured
+	var cipherSuites []uint16
+	if s.config.TLSCipherSuites != "" {
+		cipherSuites, err = ParseCipherSuites(s.config.TLSCipherSuites)
+		if err != nil {
+			return fmt.Errorf("invalid cipher suites configuration: %w", err)
+		}
+	}
+	
 	s.httpsServer = &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if s.config.HTTP3Enabled {
@@ -161,6 +171,7 @@ func (s *Server) startHTTPServers() error {
 		TLSConfig: &tls.Config{
 			NextProtos:     []string{"h2", "http/1.1", acme.ALPNProto},
 			GetCertificate: s.router.GetCertificate,
+			CipherSuites:   cipherSuites,
 		},
 	}
 
