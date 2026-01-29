@@ -18,6 +18,7 @@ type Config struct {
 	HttpsPort    int
 	MetricsPort  int
 	HTTP3Enabled bool
+	TLSCipherSuites string
 
 	AlternateConfigDir string
 }

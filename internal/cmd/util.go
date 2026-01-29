@@ -60,3 +60,12 @@ func getEnvBool(key string, defaultValue bool) bool {
 
 	return boolValue
 }
+
+func getEnvString(key string, defaultValue string) string {
+	value, ok := findEnv(key)
+	if !ok {
+		return defaultValue
+	}
+
+	return value
+}
